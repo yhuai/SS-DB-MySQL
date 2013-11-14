@@ -5,4 +5,4 @@ benchGen
 cmake_install.cmake
 group_test
 scidb_rdb
-
+*bench*
