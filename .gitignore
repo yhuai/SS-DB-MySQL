@@ -1,0 +1,8 @@
+CMakeCache.txt
+CMakeFiles/
+Makefile
+benchGen
+cmake_install.cmake
+group_test
+scidb_rdb
+
