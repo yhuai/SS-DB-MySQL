@@ -1,0 +1,486 @@
+Assorted memo, commands and any other craps.
+
+sudo /etc/init.d/mysql stop # or mysqld
+or 
+cd /usr ; /usr/bin/mysqld_safe
+
+sudo sync
+sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+
+sudo /etc/init.d/mysql start # or mysqld
+
+ ./build/benchGen -t
+  mv bench_* /data/hkimura/tiny/
+  mv bench.pos /data/hkimura/tiny/
+
+
+# move data directory
+sudo /etc/init.d/mysql stop
+sudo cp -R /var/lib/mysql /data/hkimura/db13
+sudo chmod 777 /data/hkimura/db13
+sudo chown -R mysql.mysql /data/hkimura/db13
+cd /var/lib
+sudo ln -s /data/hkimura/db13 mysql
+
+
+http://blog.taragana.com/index.php/archive/how-to-move-the-mysql-data-directory-in-ubuntu/
+
+sudo gedit /etc/apparmor.d/usr.sbin.mysqld
+sudo /etc/init.d/apparmor reload
+
+or 
+sudo aa-complain /usr/sbin/mysqld
+sudo /etc/init.d/apparmor reload
+
+
+
+gedit /etc/mysql/my.cnf &
+
+# datadir		= /var/lib/mysql
+datadir		= /data/hkimura/db13
+innodb_data_file_path	= ibdata1:10M:autoextend
+innodb_data_home_dir	= /data/hkimura/db13
+innodb_autoextend_increment	= 128
+# innodb_flush_method	= O_DIRECT # TODO: do this later
+
+show variables;
+
+wget http://dev.mysql.com/get/Downloads/MySQL-5.1/mysql-5.1.41.tar.gz/from/http://opensource.become.com/mysql/
+tar -xf mysql-5.1.41.tar.gz
+
+create database mytest1;
+grant all on *.* to myusr1@localhost identified by 'mypass1';
+create user 'myusr1'@localost identified by 'mypass1';
+
+
+#defrag
+sudo /etc/init.d/mysql stop
+sudo mkdir /data/hkimura/db13/def
+sudo cp /data/hkimura/db13/ib* /data/hkimura/db13/def
+sudo mkdir /data/hkimura/db13/old
+sudo mv /data/hkimura/db13/ib* /data/hkimura/db13/old
+sudo mv /data/hkimura/db13/def/* /data/hkimura/db13/
+sudo rmdir /data/hkimura/db13/def
+sudo chown mysql.mysql ib*
+
+grep 'Ran ' scidb_rdb.log
+
+BEFORE:
+2009-12-22 17:46:36,508 [0xb6e70920] INFO  Benchmark - Ran Q1: 20209454 microsec. result = 6.0014
+2009-12-22 17:47:10,436 [0xb6fcb920] INFO  Benchmark - Ran Q1: 20292743 microsec. result = 6.0014
+2009-12-22 17:47:44,149 [0xb7009920] INFO  Benchmark - Ran Q1: 20209732 microsec. result = 6.0014
+2009-12-22 17:47:58,146 [0xb6f48920] INFO  Benchmark - Ran Q1: 486582 microsec. result = 6.0142
+2009-12-22 17:48:12,945 [0xb6ee9920] INFO  Benchmark - Ran Q1: 469951 microsec. result = 6.0142
+2009-12-22 17:48:27,635 [0xb6e66920] INFO  Benchmark - Ran Q1: 428330 microsec. result = 6.0142
+2009-12-22 17:49:17,753 [0xb6f6c920] INFO  Benchmark - Ran Q3: 35880953 microsec. 
+2009-12-22 17:50:08,871 [0xb6e63920] INFO  Benchmark - Ran Q3: 36589008 microsec. 
+2009-12-22 17:50:58,139 [0xb6ef6920] INFO  Benchmark - Ran Q3: 35572389 microsec. 
+AFTER:
+2009-12-22 17:55:35,174 [0xb6f1c920] INFO  Benchmark - Ran Q1: 20359920 microsec. result = 6.0014
+2009-12-22 17:56:08,211 [0xb6e7c920] INFO  Benchmark - Ran Q1: 20235177 microsec. result = 6.0014
+2009-12-22 17:56:41,347 [0xb7042920] INFO  Benchmark - Ran Q1: 20275487 microsec. result = 6.0014
+2009-12-22 17:56:55,520 [0xb6eae920] INFO  Benchmark - Ran Q1: 444492 microsec. result = 6.0142
+2009-12-22 17:57:09,469 [0xb7024920] INFO  Benchmark - Ran Q1: 461153 microsec. result = 6.0142
+2009-12-22 17:57:23,468 [0xb6f4d920] INFO  Benchmark - Ran Q1: 427819 microsec. result = 6.0142
+2009-12-22 17:58:13,994 [0xb6f66920] INFO  Benchmark - Ran Q3: 36031702 microsec. 
+2009-12-22 17:59:03,314 [0xb7030920] INFO  Benchmark - Ran Q3: 36522196 microsec. 
+2009-12-22 17:59:52,900 [0xb6f93920] INFO  Benchmark - Ran Q3: 35940513 microsec. 
+
+Not much difference, ok (makes sense as I loaded data in clustered index order, and used large (128M) innodb_autoextend_increment).
+
+
+innodb_file_per_table
+With this option enabled, all newly created tables are stored in separated files in databse folder (not in mysql root which had ibdata1).
+For example,
+[root@artemis mytest1]# ls -al
+total 732384
+drwx------ 2 mysql mysql     4096 2010-01-04 10:57 .
+drwxr-xr-x 5 mysql mysql     4096 2010-01-04 10:54 ..
+-rw-rw---- 1 mysql mysql     8906 2010-01-04 10:54 bench_0000.frm
+-rw-rw---- 1 mysql mysql 92274688 2010-01-04 10:55 bench_0000.ibd
+-rw-rw---- 1 mysql mysql     8906 2010-01-04 10:55 bench_0001.frm
+-rw-rw---- 1 mysql mysql 92274688 2010-01-04 10:55 bench_0001.ibd
+-rw-rw---- 1 mysql mysql     8906 2010-01-04 10:55 bench_0002.frm
+-rw-rw---- 1 mysql mysql 92274688 2010-01-04 10:55 bench_0002.ibd
+-rw-rw---- 1 mysql mysql     8906 2010-01-04 10:55 bench_0003.frm
+-rw-rw---- 1 mysql mysql 92274688 2010-01-04 10:55 bench_0003.ibd
+
+innodb_file_per_table is required to use the innodb compression option
+
+Q3, all pixels.
+inserting back to mysql with prepared statement:
+2010-01-12 13:36:27,946 [0xb776c780] INFO  Benchmark - shrinking bench_0000...                                    
+2010-01-12 13:36:30,143 [0xb776c780] INFO  Benchmark - shrank bench_0000. 2195258 microsec                        
+2010-01-12 13:36:30,148 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:37:09,766 [0xb776c780] INFO  Benchmark - written shrunk bench_0000. 39623138 microsec               
+2010-01-12 13:37:09,766 [0xb776c780] INFO  Benchmark - shrinking bench_0001...                                    
+2010-01-12 13:37:11,988 [0xb776c780] INFO  Benchmark - shrank bench_0001. 2220271 microsec                        
+2010-01-12 13:37:12,036 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:37:51,503 [0xb776c780] INFO  Benchmark - written shrunk bench_0001. 39515472 microsec               
+2010-01-12 13:37:51,504 [0xb776c780] INFO  Benchmark - shrinking bench_0002...                                    
+2010-01-12 13:37:53,728 [0xb776c780] INFO  Benchmark - shrank bench_0002. 2223182 microsec                        
+2010-01-12 13:37:53,739 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:38:33,974 [0xb776c780] INFO  Benchmark - written shrunk bench_0002. 40246062 microsec               
+2010-01-12 13:38:33,974 [0xb776c780] INFO  Benchmark - shrinking bench_0003...                                    
+2010-01-12 13:38:36,201 [0xb776c780] INFO  Benchmark - shrank bench_0003. 2225417 microsec                        
+2010-01-12 13:38:36,206 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:39:16,527 [0xb776c780] INFO  Benchmark - written shrunk bench_0003. 40326243 microsec               
+2010-01-12 13:39:16,528 [0xb776c780] INFO  Benchmark - shrinking bench_0004...                                    
+2010-01-12 13:39:18,759 [0xb776c780] INFO  Benchmark - shrank bench_0004. 2229693 microsec                        
+2010-01-12 13:39:18,765 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:39:59,373 [0xb776c780] INFO  Benchmark - written shrunk bench_0004. 40614584 microsec               
+2010-01-12 13:39:59,374 [0xb776c780] INFO  Benchmark - shrinking bench_0005...                                    
+2010-01-12 13:40:01,588 [0xb776c780] INFO  Benchmark - shrank bench_0005. 2212942 microsec                        
+2010-01-12 13:40:01,593 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:40:41,834 [0xb776c780] INFO  Benchmark - written shrunk bench_0005. 40246402 microsec               
+2010-01-12 13:40:41,835 [0xb776c780] INFO  Benchmark - shrinking bench_0006...                                    
+2010-01-12 13:40:44,048 [0xb776c780] INFO  Benchmark - shrank bench_0006. 2211865 microsec                        
+2010-01-12 13:40:44,054 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:41:24,904 [0xb776c780] INFO  Benchmark - written shrunk bench_0006. 40856174 microsec               
+2010-01-12 13:41:24,904 [0xb776c780] INFO  Benchmark - shrinking bench_0007...                                    
+2010-01-12 13:41:27,113 [0xb776c780] INFO  Benchmark - shrank bench_0007. 2206970 microsec                        
+2010-01-12 13:41:27,123 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:42:08,208 [0xb776c780] INFO  Benchmark - written shrunk bench_0007. 41094562 microsec               
+2010-01-12 13:42:08,208 [0xb776c780] INFO  Benchmark - shrinking bench_0008...                                    
+2010-01-12 13:42:10,414 [0xb776c780] INFO  Benchmark - shrank bench_0008. 2204969 microsec                        
+2010-01-12 13:42:10,420 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:42:50,408 [0xb776c780] INFO  Benchmark - written shrunk bench_0008. 39993024 microsec               
+2010-01-12 13:42:50,408 [0xb776c780] INFO  Benchmark - shrinking bench_0009...                                    
+2010-01-12 13:42:52,580 [0xb776c780] INFO  Benchmark - shrank bench_0009. 2170693 microsec                        
+2010-01-12 13:42:52,586 [0xb776c780] INFO  Benchmark - inserting Q3 results back to mysql...                      
+2010-01-12 13:43:32,938 [0xb776c780] INFO  Benchmark - written shrunk bench_0009. 40358655 microsec               
+2010-01-12 13:43:32,939 [0xb776c780] INFO  Benchmark - time for cooking: 22101260 microsec, insertion: 402874316 microsec                                                                                                           
+2010-01-12 13:43:32,939 [0xb776c780] INFO  Benchmark - Ran Q3 all: 424993135 microsec.                            
+2010-01-12 13:43:32,939 [0xb776c780] INFO  mysql - closing connection to host=localhost, port=3306, db=mytest1, user=myusr1...                                                         
+wow.slow.
+
+When used the temporary csv file + 'load data'
+
+2010-01-12 14:14:31,051 [0xb78a1780] INFO  Benchmark - shrinking bench_0000...                                    
+2010-01-12 14:14:33,243 [0xb78a1780] INFO  Benchmark - shrank bench_0000. 2191128 microsec                        
+2010-01-12 14:14:33,284 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:33,284 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:33,284 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:33,528 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:34,495 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:34,495 [0xb78a1780] INFO  Benchmark - written shrunk bench_0000. 1251320 microsec                
+2010-01-12 14:14:34,495 [0xb78a1780] INFO  Benchmark - shrinking bench_0001...                                    
+2010-01-12 14:14:36,345 [0xb78a1780] INFO  Benchmark - shrank bench_0001. 1848800 microsec                        
+2010-01-12 14:14:36,408 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:36,408 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:36,408 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:36,662 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:37,656 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:37,656 [0xb78a1780] INFO  Benchmark - written shrunk bench_0001. 1310887 microsec                
+2010-01-12 14:14:37,656 [0xb78a1780] INFO  Benchmark - shrinking bench_0002...                                    
+2010-01-12 14:14:39,507 [0xb78a1780] INFO  Benchmark - shrank bench_0002. 1849661 microsec                        
+2010-01-12 14:14:39,546 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:39,546 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:39,546 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:39,793 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:40,762 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:40,762 [0xb78a1780] INFO  Benchmark - written shrunk bench_0002. 1255004 microsec                
+2010-01-12 14:14:40,763 [0xb78a1780] INFO  Benchmark - shrinking bench_0003...                                    
+2010-01-12 14:14:42,620 [0xb78a1780] INFO  Benchmark - shrank bench_0003. 1856289 microsec                        
+2010-01-12 14:14:42,687 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:42,687 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:42,687 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:42,940 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:43,987 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:43,988 [0xb78a1780] INFO  Benchmark - written shrunk bench_0003. 1367233 microsec                
+2010-01-12 14:14:43,988 [0xb78a1780] INFO  Benchmark - shrinking bench_0004...                                    
+2010-01-12 14:14:45,845 [0xb78a1780] INFO  Benchmark - shrank bench_0004. 1856312 microsec                        
+2010-01-12 14:14:45,909 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:45,909 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:45,909 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:46,166 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:47,156 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:47,156 [0xb78a1780] INFO  Benchmark - written shrunk bench_0004. 1310504 microsec                
+2010-01-12 14:14:47,156 [0xb78a1780] INFO  Benchmark - shrinking bench_0005...                                    
+2010-01-12 14:14:49,000 [0xb78a1780] INFO  Benchmark - shrank bench_0005. 1842244 microsec                        
+2010-01-12 14:14:49,046 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:49,046 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:49,046 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:49,320 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:50,306 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:50,306 [0xb78a1780] INFO  Benchmark - written shrunk bench_0005. 1306045 microsec                
+2010-01-12 14:14:50,306 [0xb78a1780] INFO  Benchmark - shrinking bench_0006...                                    
+2010-01-12 14:14:52,156 [0xb78a1780] INFO  Benchmark - shrank bench_0006. 1848814 microsec                        
+2010-01-12 14:14:52,202 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:52,202 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:52,202 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:52,443 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:53,414 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:53,414 [0xb78a1780] INFO  Benchmark - written shrunk bench_0006. 1257320 microsec                
+2010-01-12 14:14:53,414 [0xb78a1780] INFO  Benchmark - shrinking bench_0007...                                    
+2010-01-12 14:14:55,248 [0xb78a1780] INFO  Benchmark - shrank bench_0007. 1832285 microsec                        
+2010-01-12 14:14:55,300 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:55,300 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:55,300 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:55,542 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:56,530 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:56,530 [0xb78a1780] INFO  Benchmark - written shrunk bench_0007. 1282567 microsec                
+2010-01-12 14:14:56,531 [0xb78a1780] INFO  Benchmark - shrinking bench_0008...                                    
+2010-01-12 14:14:58,377 [0xb78a1780] INFO  Benchmark - shrank bench_0008. 1844931 microsec                        
+2010-01-12 14:14:58,443 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:14:58,443 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:14:58,443 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:14:58,703 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:14:59,666 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:14:59,666 [0xb78a1780] INFO  Benchmark - written shrunk bench_0008. 1289558 microsec                
+2010-01-12 14:14:59,667 [0xb78a1780] INFO  Benchmark - shrinking bench_0009...                                    
+2010-01-12 14:15:01,484 [0xb78a1780] INFO  Benchmark - shrank bench_0009. 1816641 microsec                        
+2010-01-12 14:15:01,530 [0xb78a1780] INFO  Benchmark - current dir=/home/hkimura/workspace/scidb_rdb              
+2010-01-12 14:15:01,530 [0xb78a1780] INFO  Benchmark - inserting Q3 results back to mysql in bulk...              
+2010-01-12 14:15:01,530 [0xb78a1780] INFO  Benchmark - writing temporary csv file...                              
+2010-01-12 14:15:01,786 [0xb78a1780] INFO  Benchmark - loading csv to mysql ...                                   
+2010-01-12 14:15:02,767 [0xb78a1780] INFO  Benchmark - loaded.                                                    
+2010-01-12 14:15:02,768 [0xb78a1780] INFO  Benchmark - written shrunk bench_0009. 1283002 microsec                
+2010-01-12 14:15:02,768 [0xb78a1780] INFO  Benchmark - time for cooking: 18787105 microsec, insertion: 12913440 microsec                                                                                                            
+2010-01-12 14:15:02,768 [0xb78a1780] INFO  Benchmark - Ran Q3 all: 31717021 micro
+
+okay, much faster. let's use this.
+
+D2/T totalPairCnt
+
+20/32 totalPairCnt=1024299
+20/24 totalPairCnt=764364
+20/16 totalPairCnt=97
+
+15/32 totalPairCnt=335702
+15/24 totalPairCnt=244165
+15/16 totalPairCnt=43
+
+10/32 totalPairCnt=67716
+10/24 totalPairCnt=50152
+10/16 totalPairCnt=12
+
+sudo mysql mytest1 -e "SET UNIQUE_CHECKS=0; LOAD DATA LOCAL INFILE 'vs_data' INTO TABLE vs_bench FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';SET UNIQUE_CHECKS=1;"
+
+create table vs_bench(tile INT NOT NULL, x INT NOT NULL, y INT NOT NULL, pix INT NOT NULL, var INT NOT NULL, valid INT NOT NULL, sat INT NOT NULL, v0 INT NOT NULL, v1 INT NOT NULL, v2 INT NOT NULL, v3 INT NOT NULL, v4 INT NOT NULL, v5 INT NOT NULL, v6 INT NOT NULL, CONSTRAINT PRIMARY KEY Raw_x_PK (tile, y, x)) ENGINE=INNODB
+
+
+
+-- commands on each node
+sudo apt-get install libboost1.40-all-dev libmysqlclient16 liblog4cxx10 liblog4cxx10-dev cmake
+cd
+svn co https://database.cs.brown.edu/svn/scidb_rdb --username hkimura
+cd scidb_rdb
+cmake .
+make
+cp connection.config.fed connection.config
+
+sudo /etc/init.d/mysql stop
+sudo /etc/init.d/postgresql-8.3 stop
+sudo /etc/init.d/postgresql-8.4 stop
+sudo mv /etc/mysql/my.cnf.bk /etc/mysql/my.cnf.bk.bk
+sudo mv /etc/mysql/my.cnf /etc/mysql/my.cnf.bk
+sudo cp my_template.cnf /etc/mysql/my.cnf
+sudo rm -rf /data/federated_mysql
+sudo mkdir /data/federated_mysql
+sudo cp -R /var/lib/mysql/mysql /data/federated_mysql
+sudo chown -R mysql.mysql /data/federated_mysql
+sudo /etc/init.d/mysql start
+sudo mysql -e "create database feddb;grant all on *.* to myusr1@localhost identified by 'mypass1';create user 'myusr1'@localhost identified by 'mypass1';"
+sudo /etc/init.d/mysql stop
+
+tar -xf tileData9.tar.gz
+sudo mkdir /data/federated_mysql/csvs
+sudo cp tileData9.new /data/federated_mysql/csvs/tileData
+sudo cp benchGen /data/federated_mysql/csvs/
+cd /data/federated_mysql/csvs/
+
+sudo ./benchGen -t -c normal -r -n 10 -i <nodeid> tileData &
+
+<takes 2 hours here...>
+
+sudo chown -R mysql.mysql /data/federated_mysql/csvs/
+sudo /etc/init.d/mysql start
+cd
+cd scidb_rdb
+./insertToMySQL_general.pl /data/federated_mysql/csvs feddb 7500 &
+
+sudo rm -rf /data/tempcsvs/
+sudo mkdir /data/tempcsvs/
+sudo chmod 777 /data/tempcsvs/
+
+svn update
+make
+./scidb_rdb loadParallel 1000 <nodeid*10000000>
+ex:
+./scidb_rdb loadParallel 1000 10000000
+./scidb_rdb loadParallel 1000 20000000
+
+
+
+# in tiny data
+sudo rm -rf /home/hkimura/tempcsvs/
+sudo mkdir /home/hkimura/tempcsvs/
+sudo chmod 777 /home/hkimura/tempcsvs/
+
+# reboot here
+sudo reboot
+sudo /etc/init.d/postgres-8.3 stop
+sudo /etc/init.d/postgres-8.4 stop
+
+
+# no pass ssh on 10 nodes
+ssh-keygen -t rsa
+# repeat for each node
+ssh hideakik@farm8 mkdir -p .ssh
+cat .ssh/id_rsa.pub | ssh hideakik@farm8 'cat >> .ssh/authorized_keys'
+
+
+ssh hideakik@farm8.csail.mit.edu mkdir -p .ssh
+cat .ssh/id_rsa.pub | ssh hideakik@farm8.csail.mit.edu 'cat >> .ssh/authorized_keys'
+
+# collect observations from each node
+# do this at MASTER node (farm10).
+ssh farm10.csail.mit.edu -l hideakik
+cd /data/federated_mysql
+sudo rm /data/federated_mysql/csvs/*
+sudo mkdir /data/federated_mysql
+
+date
+sudo mkdir /mnt/data0
+sudo mkdir /mnt/data1
+sudo mkdir /mnt/data2
+sudo mkdir /mnt/data3
+sudo mkdir /mnt/data4
+sudo mkdir /mnt/data5
+sudo mkdir /mnt/data6
+sudo mkdir /mnt/data7
+sudo mkdir /mnt/data8
+sudo mkdir /mnt/data9
+sudo mount farm10:/data/ /mnt/data0
+sudo mount farm11:/data/ /mnt/data1
+sudo mount farm12:/data/ /mnt/data2
+sudo mount farm13:/data/ /mnt/data3
+sudo mount farm14:/data/ /mnt/data4
+sudo mount farm5:/data/ /mnt/data5
+sudo mount farm6:/data/ /mnt/data6
+sudo mount farm7:/data/ /mnt/data7
+sudo mount farm8:/data/ /mnt/data8
+sudo mount farm9:/data/ /mnt/data9
+sudo cp -R /mnt/data0/tempcsvs /data/federated_mysql/csvs/tempcsvs0
+date
+sudo cp -R /mnt/data1/tempcsvs /data/federated_mysql/csvs/tempcsvs1
+date
+sudo cp -R /mnt/data2/tempcsvs /data/federated_mysql/csvs/tempcsvs2
+date
+sudo cp -R /mnt/data3/tempcsvs /data/federated_mysql/csvs/tempcsvs3
+date
+sudo cp -R /mnt/data4/tempcsvs /data/federated_mysql/csvs/tempcsvs4
+date
+sudo cp -R /mnt/data5/tempcsvs /data/federated_mysql/csvs/tempcsvs5
+date
+sudo cp -R /mnt/data6/tempcsvs /data/federated_mysql/csvs/tempcsvs6
+date
+sudo cp -R /mnt/data7/tempcsvs /data/federated_mysql/csvs/tempcsvs7
+date
+sudo cp -R /mnt/data8/tempcsvs /data/federated_mysql/csvs/tempcsvs8
+date
+sudo cp -R /mnt/data9/tempcsvs /data/federated_mysql/csvs/tempcsvs9
+sudo chown -R mysql.mysql /data/federated_mysql/csvs
+date
+
+On each node:
+ grant all on *.* to myusr1@farm10.csail.mit.edu identified by 'mypass1';
+
+# on farm10
+cd /data/hkimura
+mkdir csvforslave0
+mkdir csvforslave1
+mkdir csvforslave2
+mkdir csvforslave3
+mkdir csvforslave4
+mkdir csvforslave5
+mkdir csvforslave6
+mkdir csvforslave7
+mkdir csvforslave8
+mkdir csvforslave9
+
+#on each node
+sudo mkdir /mnt/csvfrommaster
+sudo mount farm10:/data/hkimura/csvforslave<nodeid> /mnt/csvfrommaster
+
+ex:
+sudo mkdir /mnt/csvfrommaster
+sudo mount farm10:/data/hkimura/csvforslave0 /mnt/csvfrommaster
+
+ssh farm5 'sudo chmod 777 /data'
+ssh farm6 'sudo chmod 777 /data'
+ssh farm7 'sudo chmod 777 /data'
+ssh farm8 'sudo chmod 777 /data'
+ssh farm9 'sudo chmod 777 /data'
+ssh farm10 'sudo chmod 777 /data'
+ssh farm11 'sudo chmod 777 /data'
+ssh farm12 'sudo chmod 777 /data'
+ssh farm13 'sudo chmod 777 /data'
+ssh farm14 'sudo chmod 777 /data'
+
+sudo chmod 777 /mnt/data*
+
+
+ssh farm5 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave5 /mnt/csvfrommaster'
+ssh farm6 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave6 /mnt/csvfrommaster'
+ssh farm7 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave7 /mnt/csvfrommaster'
+ssh farm8 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave8 /mnt/csvfrommaster'
+ssh farm9 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave9 /mnt/csvfrommaster'
+ssh farm10 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave0 /mnt/csvfrommaster'
+ssh farm11 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave1 /mnt/csvfrommaster'
+ssh farm12 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave2 /mnt/csvfrommaster'
+ssh farm13 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave3 /mnt/csvfrommaster'
+ssh farm14 'sudo umount /mnt/csvfrommaster; sudo mount farm10:/data/hkimura/csvforslave4 /mnt/csvfrommaster'
+
+
+for i in `seq 5 14`; do ssh farm$i "cd scidb_rdb;svn update;make"; done
+
+for i in `seq 5 14`; do ssh farm$i "sudo umount /mnt/csvfrommaster"; done
+
+for i in `seq 5 14`; do ssh farm$i "./scidb_rdb loadParallel 800 $i0000000"; done
+
+for i in `seq 5 14`; do let num=($i%10)*10000000; echo "farm$i:";ssh farm$i "cd scidb_rdb;./scidb_rdb loadParallel 800 $num" &; done
+
+
+for i in `seq 5 14`; do let num=($i%10)*10000000; echo "ssh farm$i \"cd scidb_rdb;./scidb_rdb loadParallel 800 $num\" &"; done
+
+ssh farm5 "cd scidb_rdb;./scidb_rdb loadParallel 800 $num" &
+
+for i in `seq 5 14`; do ssh farm$i "rm scidb_rdb/scidb_rdb.log"; done
+ssh farm5 "cd scidb_rdb;./scidb_rdb loadParallel 1000 50000000" &
+ssh farm6 "cd scidb_rdb;./scidb_rdb loadParallel 1000 60000000" &
+ssh farm7 "cd scidb_rdb;./scidb_rdb loadParallel 1000 70000000" &
+ssh farm8 "cd scidb_rdb;./scidb_rdb loadParallel 1000 80000000" &
+ssh farm9 "cd scidb_rdb;./scidb_rdb loadParallel 1000 90000000" &
+ssh farm10 "cd scidb_rdb;./scidb_rdb loadParallel 1000 0" &
+ssh farm11 "cd scidb_rdb;./scidb_rdb loadParallel 1000 10000000" &
+ssh farm12 "cd scidb_rdb;./scidb_rdb loadParallel 1000 20000000" &
+ssh farm13 "cd scidb_rdb;./scidb_rdb loadParallel 1000 30000000" &
+ssh farm14 "cd scidb_rdb;./scidb_rdb loadParallel 1000 40000000" &
+
+
+
+Duplicate entry '3060016' for key 'PRIMARY'
+
+for i in `seq 0 9`; do sudo mysql mytest1 -e "drop table bench_000$i"; done
+for i in `seq 10 39`; do sudo mysql mytest1 -e "drop table bench_00$i"; done
+
+delete from images;
+LOAD DATA INFILE '/home/hideakik/scidb_rdb/bench.pos' INTO TABLE images FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n';
+UPDATE images SET xend=xstart+7500,yend=ystart+7500,time=imageid,cycle=floor(imageid/20),tablename=CONCAT('bench_',LPAD(CAST(imageid AS CHAR),4,'0'));
+
+
+ssh farm5 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm6 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm7 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm8 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm9 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm11 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm12 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+ssh farm14 'sudo mv /etc/mysql/my.cnf /etc/mysql/my_org.cnf; sudo mv /etc/mysql/my_hk.cnf /etc/mysql/my.cnf'
+
+for i in 5 6 7 8 9 11 12 13 14; do ssh farm$i "sudo reboot"; done
+for i in 5 6 7 8 9 11 12 13 14; do ssh farm$i "sudo /etc/init.d/postgresql-8.4 stop"; done
+
+

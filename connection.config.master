@@ -1,0 +1,12 @@
+# host port db user pass
+localhost 3306 feddb myusr1 mypass1
+farm10 3306 feddb myusr1 mypass1
+farm11 3306 feddb myusr1 mypass1
+farm12 3306 feddb myusr1 mypass1
+farm13 3306 feddb myusr1 mypass1
+farm14 3306 feddb myusr1 mypass1
+farm5 3306 feddb myusr1 mypass1
+farm6 3306 feddb myusr1 mypass1
+farm7 3306 feddb myusr1 mypass1
+farm8 3306 feddb myusr1 mypass1
+farm9 3306 feddb myusr1 mypass1

@@ -1,0 +1,223 @@
+
+
+==== DDLs to define MySQL tables/indexes
+
+== Raw image tables
+CREATE TABLE images (imageid INT NOT NULL PRIMARY KEY,
+	xstart INT NOT NULL,
+	ystart INT NOT NULL,
+	xend INT NOT NULL,
+	yend INT NOT NULL,
+	time INT NOT NULL,
+	cycle INT NOT NULL,
+	tablename VARCHAR(20) NOT NULL) ENGINE=MyISAM;
+
+-- xxxx is the image ID
+CREATE TABLE image_xxxx(tile INT NOT NULL,
+	x INT NOT NULL,
+	y INT NOT NULL,
+	pix INT NOT NULL,
+	var INT NOT NULL,
+	valid INT NOT NULL,
+	sat INT NOT NULL,
+	v0 INT NOT NULL,
+	v1 INT NOT NULL,
+	v2 INT NOT NULL,
+	v3 INT NOT NULL,
+	v4 INT NOT NULL,
+	v5 INT NOT NULL,
+	v6 INT NOT NULL,
+	CONSTRAINT PRIMARY KEY Raw_x_PK (tile,y,x)) ENGINE=INNODB;
+
+== Observation tables
+CREATE TABLE observations (
+	obsid INT NOT NULL PRIMARY KEY,
+	imageid INT NOT NULL,
+	time INT NOT NULL,
+	cycle INT NOT NULL,
+	averageDist REAL NOT NULL,
+	pixelSum BIGINT NOT NULL,
+	centerx INT NOT NULL,
+	centery INT NOT NULL,
+	boxxstart INT NOT NULL,
+	boxystart INT NOT NULL,
+	boxxend INT NOT NULL,
+	boxyend INT NOT NULL,
+	center GEOMETRY NOT NULL, polygons GEOMETRY NOT NULL
+	) ENGINE=MyISAM;
+CREATE SPATIAL INDEX ix_obs_cn ON observations (center);
+CREATE SPATIAL INDEX ix_obs_bb ON observations (polygons);
+
+CREATE TABLE  obs_polygons (
+	obsid INT NOT NULL,
+	ord INT NOT NULL,
+	x INT NOT NULL,
+	y INT NOT NULL,
+	CONSTRAINT PRIMARY KEY obs_polygons_pk (obsid, ord)
+	) ENGINE=InnoDB;
+
+
+== Observation Group tables
+CREATE TABLE obsgroup (
+	obsgroupid INT NOT NULL PRIMARY KEY,
+	center_traj GEOMETRY NOT NULL
+	) ENGINE=MyISAM;
+CREATE SPATIAL INDEX ix_obsgr_tr ON obsgroup (center_traj);
+
+CREATE TABLE obsgroup_obs (
+	obsgroupid INT NOT NULL,
+	obsid INT NOT NULL,
+	CONSTRAINT PRIMARY KEY obsgroup_obs_pk (obsgroupid, obsid)
+	) ENGINE=InnoDB;
+
+CREATE TABLE polygon_trajectory (
+	obsgroupid INT NOT NULL,
+	fromtime INT NOT NULL,
+	totime INT NOT NULL,
+	traj GEOMETRY NOT NULL,
+	CONSTRAINT PRIMARY KEY polygon_traj_pk (obsgroupid, fromtime)
+	) ENGINE=MyISAM;
+CREATE SPATIAL INDEX ix_obsgrpl_tr ON polygon_trajectory (traj);
+
+
+==== DMLs and pseudo C++ codes to answer benchmark queries
+
+== Q1
+  SELECT tablename FROM images WHERE cycle=$cycle
+  SELECT SUM($attribute),COUNT(*) FROM image_xxxx
+We issue this SQL for each image in the cycle (if distributed, on the node where the image resides)
+and devides the total sum by the total count to get the global average.
+
+== Q2
+  SELECT x,y,pix FROM image_xxxx
+We simply issue this query and cook the result by the C++ code shared with SciDB.
+The results are written out to a local CSV file and then loaded to MySQL by LOAD DATA command.
+
+== Q3
+  SELECT tablename FROM images WHERE cycle=$cycle
+  SELECT x,y,pix,var,valid FROM image_xxxx
+We simply issue this query and shrink the result in C++.
+The results are written out to a local CSV file and then loaded to MySQL by LOAD DATA command.
+
+
+== Q4
+  SELECT AVG($attribute) FROM observations WHERE
+      cycle=$cycle AND Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center)
+
+This single SQL answers the query.
+
+== Q5
+  SELECT AVG($attribute) FROM observations WHERE
+      cycle=$cycle AND Intersects(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), polygons)
+
+This single SQL answers the query.
+
+
+== Q6
+  SELECT centerx,centery FROM observations WHERE cycle=$cycle
+      AND Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center)
+This SQL returns centers of all observations.
+We then cluster the centers in C++ and calculate density for each center.
+We output centers with the threshold density or more to a local CSV file and then load
+it to MySQL by LOAD DATA command.
+
+== Q7
+-- for non-singleton groups
+  SELECT obsgroupid FROM obsgroup
+      WHERE Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center_traj)
+
+-- for singleton groups
+  SELECT obsid FROM observations
+      WHERE Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center)
+
+The two SQLs return the matching groups (either singleton or not).
+This query just returns the IDs of them. So, no additional code.
+
+== Q8
+
+-- for non-singleton groups
+  SELECT obsgroupid FROM obsgroup
+      WHERE Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center_traj)
+
+-- for singleton groups
+  SELECT obsid FROM observations
+      WHERE Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), center)
+
+These SQLs return the matching groups/observations.
+See next section for handling of matching groups/observations.
+
+== Q9
+-- for non-singleton groups
+  SELECT obsgroupid FROM polygon_trajectory
+      WHERE fromtime<=$t AND totime>=$t AND Intersects(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), traj)
+
+-- for singleton groups
+  SELECT obsid FROM observations
+      WHERE time=$t AND Contains(GeomFromText('Polygon((
+      $xstart $ystart,
+      ($xstart + $xlen) $ystart,
+      ($xstart + $xlen) ($ystart + $ylen),
+      $xstart ($ystart + $ylen),
+      $xstart $ystart
+      ))'), polygons)
+
+These SQLs return the matching groups/observations.
+See next section for handling of matching groups/observations.
+
+== Pixel retrieval and result output for Q8/Q9 (in C++)
+First, we retrieve centerx and centery of the observations
+in the matching groups (or of the singletone observations).
+
+Next, we retrieve pixels of intersecting images (if distributed, from each node).
+
+Finally, we write surrounding pixels for each observation centers into local CSV files
+and load them into MySQL by LOAD DATA commands.
+

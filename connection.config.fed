@@ -1,0 +1,2 @@
+# host port db user pass
+localhost 3306 feddb myusr1 mypass1

@@ -1,0 +1,29 @@
+
+===================================================
+REQUIREMENTS
+
+- cmake 2.6
+- reasonably latest libstdc/boost/etc.
+- log4cxx
+- MySQL Connector/C (not mysql++ for ideal performance)
+see CMakeLists.txt for more details.
+
+===================================================
+DIRECTORY STRUCTURE
+
+Simply put everything under scidb_rdb. This program should be compact.
+
+===================================================
+CODING STYLE
+
+I don't care.
+basically 2-space (no tab) indent, orthodox style. You can object.
+
+===================================================
+ENVIRONMENT SPECIFIC FILES
+
+Files named "xxx.template" are configuration files you should copy/rename
+to "xxx" in your environment.
+
+- connection.config.template: define MySQL servers to connect. the first row
+is 'main' server which should be localhost.

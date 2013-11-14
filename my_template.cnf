@@ -1,0 +1,31 @@
+# Common mysql configuration file for scidb_rdb
+# distributed benchmark. This file will be used in all nodes.
+# In distributed mode, all data are stored in /data/federated_mysql
+[client]
+port		= 3306
+socket		= /var/run/mysqld/mysqld.sock
+
+[mysqld_safe]
+log-error=/var/log/mysqld.log
+socket		= /var/run/mysqld/mysqld.sock
+nice		= 0
+
+[mysqld]
+user		= mysql
+pid-file	= /var/run/mysqld/mysqld.pid
+socket		= /var/run/mysqld/mysqld.sock
+datadir		= /data/federated_mysql
+innodb_data_file_path	= ibdata1:10M:autoextend
+innodb_data_home_dir	= /data/federated_mysql
+innodb_additional_mem_pool_size = 256M
+innodb_autoextend_increment	= 256
+innodb_buffer_pool_size=1G
+innodb_flush_log_at_trx_commit=2
+innodb_flush_method=O_DIRECT
+innodb_doublewrite=0
+innodb_file_per_table=1
+innodb_log_file_size=256M
+innodb_log_buffer_size=8MB
+
+[mysql]
+no-auto-rehash

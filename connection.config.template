@@ -1,0 +1,3 @@
+# host port db user pass
+localhost 3306 mytest1 myusr1 mypass1
+
