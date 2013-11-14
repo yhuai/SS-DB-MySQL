@@ -27,3 +27,7 @@ to "xxx" in your environment.
 
 - connection.config.template: define MySQL servers to connect. the first row
 is 'main' server which should be localhost.
+
+===================================================
+BUILD
+cmake ./ && make
